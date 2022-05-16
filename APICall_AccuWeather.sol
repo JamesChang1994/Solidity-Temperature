@@ -5,7 +5,9 @@ import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 
 // Deploy the contract on Kovan network
 // provide some LINK tokens and send them to your contract
+// Execute requestLocationCurrentConditions() function with your desired inputs
 // call 0 index of locationCurrentConditionsArray[] and copy it
+// Enter it on all of available mappings inputs to see results
 
 contract WeatherOracle is ChainlinkClient {
     using Chainlink for Chainlink.Request;
@@ -42,7 +44,8 @@ contract WeatherOracle is ChainlinkClient {
     }
 
     // Maps
-    mapping(bytes32 => CurrentConditionsResult) public requestIdCurrentConditionsResult;
+    mapping(bytes32 => CurrentConditionsResult)
+        public requestIdCurrentConditionsResult;
     mapping(bytes32 => LocationResult) public requestIdLocationResult;
     mapping(bytes32 => RequestParams) public requestIdRequestParams;
 
@@ -53,19 +56,36 @@ contract WeatherOracle is ChainlinkClient {
         setChainlinkOracle(0xfF07C97631Ff3bAb5e5e5660Cdf47AdEd8D4d4Fd);
     }
 
-    /* ========== CONSUMER REQUEST FUNCTIONS ========== */
+    function requestLocationCurrentConditions(
+        string calldata _lat,
+        string calldata _lon,
+        string calldata _units
+    ) public {
+        Chainlink.Request memory req = buildChainlinkRequest(
+            0x3763323736393836653233623462316339393064383635396263613761396430,
+            address(this),
+            this.fulfillLocationCurrentConditions.selector
+        );
 
-    /**
-     * @notice Returns the current weather conditions of a location for the given coordinates.
-     * @param _lat the latitude (WGS84 standard, from -90 to 90).
-     * @param _lon the longitude (WGS84 standard, from -180 to 180).
-     * @param _units the measurement system ("metric" or "imperial").
-     */
+        req.add("endpoint", "location-current-conditions"); // NB: not required if it has been hardcoded in the job spec
+        req.add("lat", _lat);
+        req.add("lon", _lon);
+        req.add("units", _units);
 
-    // Sample : Unite Sate
-    // Latitude: 35.689198
-    // Longitude: 51.388974
-    // unit : metric
+        bytes32 requestId = sendChainlinkRequest(req, 1000000000000000000);
+
+        // Below this line is just an example of usage
+        storeRequestParams(
+            requestId,
+            0,
+            "location-current-conditions",
+            _lat,
+            _lon,
+            _units
+        );
+
+        locationCurrentConditionsArray.push(requestId);
+    }
 
     /* ========== CONSUMER FULFILL FUNCTIONS ========== */
 
@@ -100,6 +120,28 @@ contract WeatherOracle is ChainlinkClient {
         requestIdRequestParams[_requestId] = requestParams;
     }
 
+    function storeLocationResult(
+        bytes32 _requestId,
+        bytes memory _locationResult
+    ) private {
+        LocationResult memory result = abi.decode(
+            _locationResult,
+            (LocationResult)
+        );
+        requestIdLocationResult[_requestId] = result;
+    }
+
+    function storeCurrentConditionsResult(
+        bytes32 _requestId,
+        bytes memory _currentConditionsResult
+    ) private {
+        CurrentConditionsResult memory result = abi.decode(
+            _currentConditionsResult,
+            (CurrentConditionsResult)
+        );
+        requestIdCurrentConditionsResult[_requestId] = result;
+    }
+
     /* ========== OTHER FUNCTIONS ========== */
 
     function getOracleAddress() external view returns (address) {
@@ -107,7 +149,12 @@ contract WeatherOracle is ChainlinkClient {
     }
 
     function withdrawLink() public {
-        LinkTokenInterface linkToken = LinkTokenInterface(chainlinkTokenAddress());
-        require(linkToken.transfer(msg.sender, linkToken.balanceOf(address(this))), "Unable to transfer");
+        LinkTokenInterface linkToken = LinkTokenInterface(
+            chainlinkTokenAddress()
+        );
+        require(
+            linkToken.transfer(msg.sender, linkToken.balanceOf(address(this))),
+            "Unable to transfer"
+        );
     }
 }
