@@ -56,6 +56,20 @@ contract WeatherOracle is ChainlinkClient {
         setChainlinkOracle(0xfF07C97631Ff3bAb5e5e5660Cdf47AdEd8D4d4Fd);
     }
 
+    /* ========== CONSUMER REQUEST FUNCTIONS ========== */
+
+    /**
+     * @notice Returns the current weather conditions of a location for the given coordinates.
+     * @param _lat the latitude (WGS84 standard, from -90 to 90).
+     * @param _lon the longitude (WGS84 standard, from -180 to 180).
+     * @param _units the measurement system ("metric" or "imperial").
+     */
+
+    // Sample : Unite Sate
+    // Latitude: 35.689198
+    // Longitude: 51.388974
+    // unit : metric
+
     function requestLocationCurrentConditions(
         string calldata _lat,
         string calldata _lon,
